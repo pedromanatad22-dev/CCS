@@ -49,6 +49,7 @@ textarea{font:inherit;width:100%;min-height:76px;padding:8px;border-radius:8px;b
 <label class="f">Training mode<select id="s_amode"><option value="practice">Practice (checklist shown)</option><option value="assess">Assessment (no hints)</option></select></label>
 <label class="f">Input mode<select id="s_mode"><option value="voice">Full voice (auto-listen)</option><option value="push">Push-to-talk</option><option value="text">Text fallback</option></select></label>
 <label class="f">Passenger engine<select id="s_cust"><option value="local">Local fallback customer (no data leaves the browser)</option><option value="live" id="o_live">Live AI customer (checking…)</option></select></label>
+<label class="f">Live AI style<select id="s_aistyle"><option value="decides">Gemini decides what the customer says (profile-limited, fact-checked)</option><option value="words">Rules decide, Gemini only rewords</option></select></label>
 <label class="f">SimSimi voice (optional)<select id="s_sim"><option value="0">Off</option><option value="1" id="o_sim" disabled>On (checking…)</option></select></label>
 <label class="f">Recognition engine<select id="s_engine"><option value="browser">Browser recognition (default)</option><option value="cloud" id="o_cloud">Cloud recognition (checking…)</option><option value="text">Text-only (type responses)</option></select></label>
 <label class="f">Speech accent<select id="s_lang"><option value="en-US">English (US)</option><option value="en-PH">English (Philippines)</option><option value="en-GB">English (UK)</option><option value="en-AU">English (Australia)</option><option value="en-IN">English (India)</option><option value="en-SG">English (Singapore)</option><option value="en-CA">English (Canada)</option></select></label>
@@ -121,7 +122,7 @@ const Voice={
 /* Optional AI wording layer: set Brain.polish=async(reply,agentText,state)=>newReply. The polished text is only used if it keeps the same
    dollar amounts, flight numbers and times as the rule-based reply (which is built from what the agent said), and isn't much longer. */
 function sameFacts(a,b){const f=z=>(z.match(/\$\s?\d+(?:,\d{3})*(?:\.\d+)?|\b(?:PA|SK|MA|TO)\d{3}\b|\b\d{1,2}:\d{2}\b/gi)||[]).map(y=>y.replace(/\s/g,'').toLowerCase()).sort().join('|');return f(a)===f(b)&&b.length<=a.length*2+40}
-const Brain={polish:null,reply:async t=>{if(S&&S.dis)return replyD(t);const r=respond(t);if(!Brain.polish)return r;try{const p=await Brain.polish(r,t,S);return typeof p==='string'&&sameFacts(r,p)?p:r}catch(e){return r}}};
+const Brain={polish:null,reply:async t=>{if(S&&S.dis)return replyD(t);const r=respond(t);S._gen=false;if(!Brain.polish)return r;try{const p=await Brain.polish(r,t,S);return typeof p==='string'&&(S._gen||sameFacts(r,p))?p:r}catch(e){return r}}};
 
 const MINOR_BAD={rx:/(i('| wi)ll|let me|i can|i('| a)m going to) (go ahead and |just )?(book|reserve|ticket|get you)|you('| a)re (all )?(booked|set)|i('| ha)ve (booked|reserved)|booked you|your (booking|ticket) is confirmed/,msg:'agreed to book a flight for a minor who is not eligible — critical policy violation.',better:'“I\'m sorry, but I\'m unable to book this flight for you because of your age. A parent or guardian would need to make the booking.”',crit:true,say:'Great, thanks!'};
 const MINOR_FIX=(decl,alt)=>[{id:'decline',rx:/(unable|not able|can'?t|cannot|not eligible|aren'?t eligible|isn'?t eligible|not allowed|not permitted|policy|unfortunately).{0,90}(book|reserve|travel|ticket|flight|fly)|(book|reserve|travel|ticket|flight|fly).{0,90}(not (allowed|eligible|permitted)|against (our )?policy)/,txt:'politely explained that booking is not allowed because of the customer\'s age.',miss:'explain clearly and kindly that the customer\'s age makes them ineligible to book.',better:'“I\'m sorry, but because of your age I\'m unable to book this for you.”',say:(P,e)=>e?'Oh... I didn\'t know that. But I have my own money.':decl},{id:'alt',rx:/(parent|guardian|adult|mother|father|mom|dad|unaccompanied|accompanied)/,txt:'offered a proper alternative (parent/guardian booking or accompanied travel).',miss:'offer an alternative, such as a parent or guardian making the booking.',better:'“Your parent or guardian can call us or book online, and we can explain our unaccompanied-minor options.”',say:()=>alt}];
@@ -265,6 +266,7 @@ function respond(text){
  if(S.sit==='change')ans.date=`I need to move it to ${P.date}. It's currently on ${P.oldDate}.`;if(S.sit==='missed')ans.date='Today, as soon as possible.';if(pol&&S.sit.startsWith('minor')){ans.date='Sometime next month.';ans.pax=P.pax>1?'Two of us, me and a friend.':'Just me.'}
  (K.topics||[]).forEach(t=>ans[t.k]=t.ans(P));
  let first=true,answered=0;
+ if(!a.topics.length&&/(how (may|can) i (help|assist)|how can i be of|how may i be of|what can i (do|help)|what brings you|what seems to be|what (is|was) the reason for (your|the) call)/.test(x)){const N={booking:`I'd like to book a flight from ${S.o?AP[S.o][0]:'here'} to ${S.d?AP[S.d][0]:'there'}.`,change:'I need to change the date of my flight.',missed:'I missed my connecting flight and I need to be rebooked.',refund:"I'd like to cancel my booking and ask about a refund.",baggage:"My checked bag didn't arrive.",assist:'I need to arrange wheelchair assistance for my trip.',namefix:'There is a mistake in the name on my ticket.',minor17:"I'd like to book an international flight.",minor14:'I want to book a flight, please.'}[S.sit];if(N){S.stated=(S.stated||0)+1;out.push(({1:'Yes, finally. ',2:'Hi, thanks. ',4:'Um, hi... ',3:'',5:''}[T]||'')+N)}}
  a.topics.forEach(k=>{if(k==='time'&&a.topics.length>2&&!a.q)return;
   if(known[k]&&!['flex'].includes(k)){st.repeat++;if(T===2||T===4)out.push('As I mentioned, '+ans[k].charAt(0).toLowerCase()+ans[k].slice(1));else{out.push('I already told you that.');d+=.7}}
   else{known[k]=1;S.probed.add(k);if((k==='time'&&!pol)||k===K.hidKey||(K.topics||[]).some(t=>t.k===k&&t.hid))S.reqKnown=true;out.push((first?pre():'')+(T===4&&first&&Math.random()<.5?'Um, I think... ':'')+ans[k]);first=false}answered++});
@@ -744,8 +746,10 @@ function sayD(R,I){const D=S.D,st=D.st,P=D.P,E=st.emotion,tr=D.mood[0],neg=E==='
  case 'ASK_FOLLOW_UP':return R.target==='arrival'?f(['What time would I arrive?',"And what time does that get me there?"]):R.target==='where'?f(['Where is that desk exactly?','And where do I find that desk?']):R.target==='goal'?goalLine():R.n.q}
  return 'Okay.'}
 function limitQ(t){const ss=t.split(/(?<=[.?!])\s+/);let q=0;const out=[];for(const z of ss){if(/\?$/.test(z)&&z.split(/\s+/).length>3){if(q)continue;q=1}out.push(z)}const qn=out.find(z=>/\?$/.test(z)&&z.split(/\s+/).length>3);let r=out.slice(0,3);if(qn&&!r.includes(qn))r[r.length-1]=qn;return r.join(' ')}
-function planD(text){const D=S.D,st=D.st;st.lastAgent=text;if(text.trim().split(/\s+/).length>=3)st.lastMeaningful=text;
- st.prev=st.emotion;const I=interpD(text);dLog(text,I);D.turn++;I.cat=classifyAgent(I);appraise(I);mTrack(I);
+function planD(text){return planD2(planD1(text))}
+function planD1(text){const D=S.D,st=D.st;st.lastAgent=text;if(text.trim().split(/\s+/).length>=3)st.lastMeaningful=text;
+ st.prev=st.emotion;const I=interpD(text);dLog(text,I);D.turn++;I.cat=classifyAgent(I);appraise(I);mTrack(I);return I}
+function planD2(I){const D=S.D,st=D.st;
  const rx=decideD(I);
  if(rx.some(r=>r.type==='PUSH_BACK'&&['tomorrow','unsuitable'].includes(r.target))&&st.pushLvl>=1)emo('bad',"The representative keeps offering options that ignore the passenger's need.");
  if(rx.some(r=>r.type==='ACCEPT')){emo('good','The representative offered something that meets the passenger\'s need.');trustMv(5);st.fail=Math.max(0,st.fail-2);st.esc=Math.max(0,st.esc-1)}
@@ -790,6 +794,7 @@ function mmss(ms){const s=Math.floor((ms||0)/1000);return String(Math.floor(s/60
 function convo(ts){return S.t.filter(x=>x.r!=='S').map(x=>(ts?'['+mmss(x.ts)+'] ':'')+(x.r==='C'?'PASSENGER: ':'REPRESENTATIVE: ')+x.text).join('\n')}
 async function replyD(text){try{return await replyD0(text)}catch(e){console.error(e);return safeD()}}
 async function replyD0(text){const D=S.D;if(D.ready)try{await withTimeout(D.ready,32000)}catch(e){}
+ if(aiDecides()&&D.ai&&D.sm&&!D.aiOff&&Date.now()>=(D.coolUntil||0))return await genD(planD1(text));
  const p=planD(text);if(!(D.ai&&D.sm)||D.aiOff||Date.now()<(D.coolUntil||0)){D.src='local';badge();return finishD(p,null)}
  const st=D.st,P=D.P,I=p.I,recent=S.t.filter(x=>x.r!=='S').slice(-8,-1).map(x=>(x.r==='C'?'PASSENGER: ':'REPRESENTATIVE: ')+x.text).join('\n')||'(none yet)';
  const rxd=p.rx.map(r=>`${r.type} → ${r.target}`).join(' + ');
@@ -985,6 +990,183 @@ async function reportM(){const D=S.D,P=D.P,lv=LVL[D.lvl]||LVL.moderate;$('#call'
  $('#b_again').onclick=()=>startCall(S.cfg);$('#b_new').onclick=()=>{r.classList.add('hid');$('#setup').classList.remove('hid')};
  $('#b_dl').onclick=()=>{const data=JSON.stringify({student:stu,date:new Date().toISOString(),scenario:S.dis?'Flight Cancellation – '+D.cx.name:D.cx.name,level:lv.n,difficulty:D.dif,total:tot,max:100,rating:rate,status:pass?'PASS':'NEEDS IMPROVEMENT',criteria:ev.c.map((x,i)=>({criterion:CM[i][0],score:x.sc,max:x.max,well:x.well,improve:x.imp})),accuracyIssues:[...ev.crit,...ev.pol],transcript:S.t.filter(x=>x.r!=='S').map(x=>({speaker:x.r==='C'?'PASSENGER':'REPRESENTATIVE',text:x.text})),evaluatedBy:ev.by},null,2);
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='performance-report.json';a.click()};window.scrollTo(0,0)}
+/* ===== v10 persona-aware live AI wording for ALL scenarios (customer type, age/minor, mood) ===== */
+const POL_TYPE={1:'IRATE: short, clipped, impatient sentences; sarcastic when upset; keeps pushing to speak to a manager.',2:'UNDERSTANDING and PATIENT: polite, warm, says please/thanks, gives the rep the benefit of the doubt.',3:'CALM at first, but becomes openly upset and argumentative when told something cannot be done.',4:'CONFUSED: unsure and hesitant ("um", "I think?"), plain everyday words, needs things explained simply.',5:'DEMANDING and SPECIFIC: direct, precise, knows exactly what you want, no small talk.'};
+const POL_BAD=/\b(fuck\w*|shit\w*|bitch\w*|asshole|bastard|cunt|dick|pussy|nigg\w*|slut|whore)\b/i;
+function polOK(t,reply,P){if(!t||/\n/.test(t)||/[*_\[\]]|as an ai|language model|instruction/i.test(t)||POL_BAD.test(t))return false;
+ const wc=t.split(/\s+/).length,rc=reply.split(/\s+/).length;if(wc>45||wc>rc*2+8)return false;
+ if(/\?/.test(reply)!==/\?/.test(t))return false;
+ const dr=reply.match(/\d+/g)||[],dt=t.match(/\d+/g)||[];if(!dr.every(d=>dt.includes(d))||!dt.every(d=>dr.includes(d)))return false;
+ if(((P&&P.name)||'').split(' ').some(w=>w.length>2&&reply.includes(w)&&!t.includes(w)))return false;
+ const ap=reply.match(/\b[A-Z]{3}\b/g)||[];return ap.every(z=>t.includes(z))}
+async function polishG(reply,agentText,st){try{
+ if(!st||st.dis||st.ended||st.ending||st.polOff||!reply||!(typeof LIVE!=='undefined'&&LIVE.ok)||!$('#s_cust')||$('#s_cust').value!=='live'||Date.now()<(st.polCool||0))return reply;
+ if(aiDecides())return await genG(reply,agentText,st);
+ const P=st.prof||{},age=+P.age,minor=age>0&&age<18,an=st.anger||0,mood=an>=4?'furious':an>=3?'very upset':an>=2?'annoyed':an>=1?'a little tense':'calm';
+ const who=minor?`a ${age}-year-old ${age<15?'child':'teenager'} (a MINOR). Talk like a real ${age<15?'kid':'teen'}: casual, simple words, no airline jargon, never sound like an adult professional`:'an adult passenger';
+ const recent=(st.t||[]).filter(x=>x.r!=='S').slice(-6).map(x=>(x.r==='C'?'YOU: ':'REP: ')+x.text).join('\n')||'(start of call)';
+ const prompt=`You are role-playing a REAL airline customer on a phone call with a customer-service trainee. You are ${who}.
+CUSTOMER TYPE: ${POL_TYPE[st.type]||POL_TYPE[3]}
+CURRENT MOOD: ${mood}. SITUATION: ${(st.K&&st.K.label)||st.sit||'general enquiry'}. YOUR NAME: ${P.name||'(not given)'}.
+${typeof memSummary==='function'?memSummary():''}
+RECENT CALL:
+${recent}
+THE REP JUST SAID: ${agentText}
+INTENDED REPLY (exactly what you mean to say; it already contains every fact you may state): "${reply}"
+TASK: Say the intended reply aloud in your own natural words so it clearly sounds like YOUR customer type, mood and age. HARD RULES: keep exactly the same facts, numbers, times, flight codes, names and meaning; if the intended reply is a question, ask that same question, and if it is a statement, do not ask any question; do NOT add new information, requests, complaints, thanks or decisions; do not reuse wording you already used earlier; 1-2 short spoken sentences; no quotation marks, stage directions or emojis; never mention being an AI. Output only the words you say.`;
+ const r=await geminiSm(prompt);const t=String(r.text||'').trim().replace(/^["“]|["”]$/g,'').replace(/^(YOU|PASSENGER|CUSTOMER):\s*/i,'');
+ st.polFail=0;if(!polOK(t,reply,P))return reply;
+ if(!st.polNote){st.polNote=1;try{addMsg('S','<i>Live AI customer (Gemini) is voicing this customer</i>')}catch(e){}}return t
+}catch(e){st.polFail=(st.polFail||0)+1;if(e&&e.status===429)st.polCool=Date.now()+60000;if(st.polFail>=3)st.polOff=true;return reply}}
+/* ===== v10 GEMINI DECIDES: the live AI chooses what the customer says — limited to the passenger's profile and memory, then fact-checked ===== */
+const aiDecides=()=>{const e=$('#s_aistyle');return !e||e.value!=='words'};
+const tminG=m=>{const q=String(m).match(/(\d{1,2})(?::(\d{2}))?\s?(a|p)\.?m/i);if(!q)return null;let h=+q[1]%12;if(/p/i.test(q[3]))h+=12;return h*60+(+q[2]||0)};
+function parseJ(t){t=String(t||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');try{return JSON.parse(t)}catch(e){}const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}return null}
+async function askAI(sm,prompt){const r=await sm(prompt,{modelTier:'quick',cache:false,json:true});const j=r&&r.json&&typeof r.json==='object'?r.json:parseJ(r&&r.text);let say=j&&typeof j.say==='string'?j.say:null;if(!say&&r&&typeof r.text==='string'&&!/^\s*[{\[]/.test(r.text))say=r.text;
+ say=String(say||'').trim().replace(/^["“]|["”]$/g,'').replace(/^(YOU|PASSENGER|CUSTOMER):\s*/i,'');return{say,j:j||{}}}
+const JSONFMT='Answer with ONLY a JSON object: {"say":"<the passenger\'s exact spoken words>","reaction":"ANSWER|ASK|CLARIFY|ACCEPT|REJECT|PUSH_BACK|CORRECT|EXPRESS_CONCERN|REQUEST_REASSURANCE|WAIT|THANK|CLOSE","accepts_option":"<flight code or time you accept, else null>","rejects_option":"<flight code, time or \'tomorrow\' you reject, else null>","asks_about":"fee|baggage|documents|original_ticket|other|none","wants_to_end_call":false}';
+function leakWhy(r){if(/\b(trust score|cooperation|evaluator|scoring|criteria|rubric|simulat\w*|inventory|hidden|as an ai|language model|system shows|i can see (all |the )?(flights|seats|availability))\b/i.test(r))return'it revealed simulator or inventory information the passenger cannot know';
+ if(/(your policy (allows|says|states)|i know (that )?(your|the) (policy|airline)|according to (the )?(policy|rules)|the rules say)/i.test(r))return'it stated airline policy the passenger does not know';return''}
+const wc=s=>s.trim().split(/\s+/).length,qn=s=>s.split(/(?<=[.?!])\s+/).filter(z=>/\?$/.test(z)&&wc(z)>3).length;
+function tokWhy(r,hayRaw){const hay=normF(hayRaw),toks=r.match(/\bpa\s?\d{3}\b|\b\d{1,2}:\d{2}\s?(am|pm)?\b|\b\d{1,2}\s?(am|pm)\b|\$\s?\d[\d,]*/gi)||[];const bad=toks.find(z=>!hay.includes(normF(z)));return bad?`it mentioned "${bad}", which the passenger has not been told and does not know`:''}
+const agentTxt=()=>S.t.filter(z=>z.r==='A').map(z=>z.text).join(' ');
+function tkS(s){return new Set(s.toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/).filter(z=>z.length>2))}
+function repWhy(r,recent){const a=tkS(r);for(const x of recent.slice(-3)){const b=tkS(x);let n=0;a.forEach(z=>{if(b.has(z))n++});if(a.size>3&&n/Math.max(a.size,b.size)>.8)return'it repeated something the passenger already said'}return''}
+/* ---------- cancellation scenario: profile, memory, knowledge limits, fact notes ---------- */
+const PERSN={'Patient / polite':'calm and polite; cooperative; says please and thank you','Demanding / specific':'firm and specific; knows what you want and keeps pursuing it; does not accept the first thing offered if it does not fit','Anxious / needs reassurance':'worried and time-pressured; seeks reassurance; short anxious sentences','Easily confused / needs plain language':'easily confused; plain simple words; asks what unfamiliar terms mean','Direct / impatient':'direct and impatient; short clipped sentences; wants answers fast'};
+function knowD(D){const tr=D.mood[0],lvl=tr==='confused'?'NOVICE':tr==='frustrated'?'EXPERIENCED':'AVERAGE',L={NOVICE:'You are an occasional flyer: you do not know airline jargon (protected, sector, reaccommodate, fare difference, voucher). Ask in plain words what such terms mean and use simple language.',AVERAGE:'You fly a few times a year: you know basic words like rebook, refund and boarding pass, but not this airline\'s specific rules.',EXPERIENCED:'You are a frequent flyer: you know common airline terms and expect efficient help, but you still do not know THIS airline\'s rules, fees or inventory and must not assert them.'}[lvl];
+ return`KNOWLEDGE LEVEL: ${lvl}. ${L}\nYOU KNOW: your own name, booking reference, flight number, route, date and scheduled time (they are on your ticket/app); that your flight was cancelled (you saw the notice); you checked one bag; why this trip matters to you and your own deadlines; ordinary common sense about travel.\nYOU DO NOT KNOW (never state these as fact; you may ASK about them): why the flight was cancelled (until the rep tells you), which other flights exist or their times and seats, fares or fees, this airline's rebooking/refund/baggage/meal/hotel rules, what the rep can or cannot do, internal procedures, desk locations. If the rep asks you something you would not know, say you don't know.`}
+function toldD(){const D=S.D,st=D.st,o=[];o.push('Reason for the cancellation: '+(st.causeKnown?D.cx.txt:'NOT told yet (you only know the flight was cancelled)'));
+ o.push(st.knownOptions.length?'Flight options the rep has mentioned: '+st.knownOptions.map(a=>`${a.no} departing ${fmt(a.dep)} ${a.dep>=1440?'tomorrow':'today'}`).join('; '):'Flight options mentioned so far: none');if(st.generic.length)o.push('The rep said there may be something '+st.generic.join(', '));
+ o.push('Decisions you made so far: '+(st.decisions.map(d=>d.offer+' '+d.response).join('; ')||'none'));o.push('Things you already told the rep: '+([...st.provided].join(', ')||'nothing yet'));return o.map(z=>'- '+z).join('\n')}
+function notesD(I){const D=S.D,P=D.P,st=D.st,n=[],tm=fmt(P.schedMin);
+ if(I.askName)n.push(`The rep asked your name → ${P.name}.`);if(I.askRef)n.push(`The rep asked your booking reference → ${P.ref}.`);if(I.askFlight)n.push(`The rep asked about your flight → ${P.flight}, ${P.oc} to ${P.dc}, scheduled ${tm} today.`);if(I.askRoute)n.push(`The rep asked your route → ${P.oc} to ${P.dc}.`);if(I.askDate&&!I.askFlight)n.push(`The rep asked your travel date → today, scheduled ${tm}.`);
+ if(I.askConcern)n.push(`The rep asked about your situation or needs → ${D.conTxt} You would like to ${D.sc.pref}.`);if(I.askBag)n.push('The rep asked about bags → you have one checked bag.');
+ I.wrongs.forEach(w=>n.push({route:`The rep got your route wrong. Your flight is ${P.oc} to ${P.dc}. Politely correct them.`,flight:`The rep gave the wrong flight number. Yours is ${P.flight}. Correct them.`,ref:`The rep gave the wrong booking reference. Yours is ${P.ref}. Correct them.`,name:`The rep used the wrong surname. Yours is ${P.name.split(' ')[1]}. Correct them.`,time:`The rep gave the wrong time. Your flight was scheduled for ${tm}. Correct them politely and ask them to check again.`,cause:`The rep's stated reason differs from what the gate staff told you (${D.cause==='weather'?'weather':'an aircraft problem'}). Say so politely.`}[w.k]));
+ I.offers.forEach(a=>{const day=a.dep>=1440?'TOMORROW':'TODAY',stated=I.times.some(t=>Math.abs(t-(((a.arrAbs%1440)+1440)%1440))<=5);let fit;
+  if(D.sc.con==='cost')fit='you have no fixed arrival deadline; judge it on cost and convenience';else if(a.dep>=1440)fit='this does NOT meet your need to travel today';else if(stated)fit=a.arrAbs<=D.dl?`it arrives before your deadline (${fmt(D.dl)}), so it meets your need`:`it arrives AFTER your deadline (${fmt(D.dl)}), so it does NOT meet your need`;else fit=`the rep has not told you the arrival time; your deadline is ${fmt(D.dl)} — ask what time it arrives if you need to`;
+  n.push(`Option mentioned: ${a.no} departing ${fmt(a.dep)} ${day}. Your own check: ${fit}.`)});
+ if(I.genTomorrow&&!I.offers.length)n.push(D.needToday?'The rep offered something tomorrow without a time. Tomorrow does NOT meet your need to travel today.':'The rep offered something tomorrow without a time; you may ask what time.');
+ if(I.fee||I.noFee||I.amount!=null)n.push('The rep talked about cost. You do not know the airline\'s fee rules; ask if anything is unclear, and react only to what was said.');
+ if(I.jargon)n.push(`The rep used the term "${I.jargon}". ${D.mood[0]==='confused'||D.mood[0]==='worried'?'You do not know what that means; ask.':'You may ask what it means in this case.'}`);
+ return n}
+function promptD(I){const D=S.D,P=D.P,st=D.st,recent=S.t.filter(x=>x.r!=='S').slice(-16,-1).map(x=>(x.r==='C'?'YOU: ':'REP: ')+x.text).join('\n')||'(this is the first thing the rep has said)';
+ const dl=D.needToday&&D.dl<1e8?` Your own deadline: you must arrive by ${fmt(D.dl)}.`:'';
+ return`You are playing ONE airline passenger on a live phone call with an airline customer-service representative who is a student in training. YOU decide what the passenger says next. You are the passenger — never airline staff, an assistant, a narrator, an examiner or a grader.
+=== WHO YOU ARE ===
+Name: ${P.name}. Personality: ${D.pers.n} — ${PERSN[D.pers.n]||'natural'}.
+=== YOUR TRIP (from your own ticket/app) ===
+Booking reference ${P.ref}; flight ${P.flight}, ${P.oc} (${P.o}) to ${P.dc} (${P.d}), scheduled today at ${fmt(P.schedMin)}. The flight was cancelled. You have one checked bag.
+=== WHAT YOU WANT ===
+Goal: ${st.goal.primary}. Why it matters: ${st.goal.secondary}${dl} Preferred outcome: ${st.goal.preferred}. Unacceptable: ${st.goal.unacceptable}. ${st.hid==='DISCLOSED_TO_REPRESENTATIVE'?'You have already explained your reason for urgency.':'You have NOT explained your personal reason for urgency yet; share it only when asked or when it becomes relevant (for example when an option does not fit).'}
+=== WHAT YOU KNOW AND DO NOT KNOW (strict limits) ===
+${knowD(D)}
+=== WHAT THE REP HAS TOLD YOU SO FAR (your memory of this call) ===
+${toldD()}
+${memSummary()}
+=== HOW YOU FEEL NOW ===
+Emotion: ${st.emotion} (${st.emotionReason||'no particular reason yet'}). Trust in the rep: ${st.trust<30?'LOW — you double-check things':st.trust>65?'high':'moderate'}. Patience: ${st.coop<40?'LOW — short and a little curt':'normal'}. Escalation level ${st.esc} of 4 (0-2: keep asking for better options; 3: ask for a supervisor; 4: ask for a manager). Still unresolved for you: ${st.concerns.join('; ')||'nothing'}.
+=== THE CALL SO FAR ===
+${recent}
+=== THE REP JUST SAID — respond to THIS ===
+${st.lastAgent}
+=== FACT NOTES (computed from your own records; treat as true) ===
+${notesD(I).map(z=>'- '+z).join('\n')||'- (nothing special: just react naturally to what the rep said)'}
+=== HOW TO DECIDE ===
+1. Answer any question the rep asked, using only the facts above. 2. React honestly to what the rep just said — acknowledge it, push back, accept, ask for clarification, or raise a concern, whichever a real person with your profile and mood would do. 3. Accept an option ONLY if, from what the rep has told you, it meets your need; otherwise explain why in a few words and ask for something that fits. Do not agree to everything and do not reject everything. 4. Never state airline policy, fees, flight times or the cancellation cause unless the rep told you in this call. 5. Raise a secondary concern (fee, bag, documents, original ticket) only after your main need has progressed, one at a time, and never ask about something already answered. 6. Do not end the call until your main concern is resolved and the rep is closing; then thank them. 7. Speak like a real person on the phone: 1-3 short sentences, at most one question, no stage directions.
+${JSONFMT}`}
+function whyD(resp,j,I){const D=S.D,P=D.P,st=D.st,w=[];if(!resp)return['it was empty'];if(wc(resp)>55||resp.length>420)w.push('it was too long for a phone reply (1-3 short sentences)');
+ const lk=leakWhy(resp);if(lk)w.push(lk);const tk=tokWhy(resp,agentTxt()+' '+P.flight+' '+P.ref+' '+fmt(P.schedMin)+' '+P.name+' '+(D.needToday&&D.dl<1e8?fmt(D.dl):'')+' '+I.offers.map(a=>a.no+fmt(a.dep)).join(' '));if(tk)w.push(tk);
+ const rf=resp.match(/\b[A-Z]{2}\d{4}\b/g)||[];if(rf.some(z=>z!==P.ref))w.push('it gave a booking reference that is not yours');
+ if(!st.causeKnown&&!I.cause&&!I.wrongs.some(z=>z.k==='cause')&&/(technical|mechanical|aircraft|weather|storm|typhoon)/i.test(resp))w.push('it mentioned why the flight was cancelled before the rep told you');
+ if(I.askName&&!resp.includes(P.name.split(' ')[0]))w.push('the rep asked your name and your answer did not include it');if(I.askRef&&!resp.includes(P.ref))w.push(`the rep asked your booking reference and your answer did not include ${P.ref}`);
+ if(I.askFlight&&!normF(resp).includes(normF(P.flight)))w.push(`the rep asked about your flight and your answer did not include ${P.flight}`);if(I.askRoute&&!(new RegExp(esc(P.oc)+'|'+esc(P.dc)+'|\\b'+P.o+'\\b|\\b'+P.d+'\\b','i').test(resp)))w.push('the rep asked your route and you did not answer it');
+ if(I.askConcern&&!/(appointment|connect|expens|cost|charge|bag|today|tonight|miss|need)/i.test(resp))w.push('the rep asked about your situation and you did not explain your need');
+ I.wrongs.forEach(z=>{const ok={route:new RegExp(esc(P.oc)+'|\\b'+P.o+'\\b','i'),flight:new RegExp(esc(P.flight).replace(/\s/,'\\s?'),'i'),ref:new RegExp(P.ref),name:new RegExp(P.name.split(' ')[1],'i'),time:new RegExp(esc(fmt(P.schedMin)),'i'),cause:/(weather|aircraft|gate|problem)/i}[z.k];if(ok&&!ok.test(resp))w.push('the rep gave wrong information about your trip and you did not correct it')});
+ const ac=j&&j.accepts_option?D.alts.find(a=>String(j.accepts_option).toUpperCase().replace(/\s/g,'')===a.no||(()=>{const m=tminG(String(j.accepts_option));return m!=null&&Math.abs(m-(a.dep%1440))<=5})()):null;
+ if(j&&j.accepts_option&&!ac)w.push('you accepted an option that does not exist in what the rep told you');
+ if(ac&&!st.knownOptions.includes(ac)&&!I.offers.includes(ac))w.push('you accepted an option the rep has not offered');if(ac&&!fitA(ac))w.push('you accepted an option that does not meet your need to travel today');
+ if(!ac&&/(that works|sounds good|i'll take|book it|i'd like to take)/i.test(resp)&&String(j&&j.reaction).toUpperCase()!=='ACCEPT')w.push('you agreed without choosing an option');
+ const wantsEnd=!!(j&&j.wants_to_end_call)||/\b(goodbye|bye)\b/i.test(resp),closeOK=(I.close||I.askElse)&&!unresolvedD();if(wantsEnd&&!closeOK)w.push('you ended the call although your concern is not resolved yet');
+ if(/\b(supervisor|manager)\b/i.test(resp)&&st.esc<3)w.push('you asked for a supervisor too early; keep pressing for better options first');
+ if(qn(resp)>1)w.push('you asked more than one question');
+ for(const n of st.needs){if(n.done&&/\?/.test(resp)){const a=n.q.toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/).filter(z=>z.length>3),b=resp.toLowerCase();if(a.length&&a.filter(z=>b.includes(z)).length/a.length>.7)w.push('you asked about something the rep already answered')}}
+ if(EANG[st.emotion]>=2.8&&!ac&&!wantsEnd&&/(great,? thank|that'?s a relief|wonderful|perfect)/i.test(resp))w.push('the tone was too happy for how you feel right now');
+ const rp=repWhy(resp,st.recent);if(rp)w.push(rp);return[...new Set(w)]}
+function rxFromJson(j,I,say){const D=S.D,st=D.st,rx=[],R=(type,target,x)=>rx.push({type,target,...x}),rc=String(j.reaction||'').toUpperCase();
+ const alt=o=>o?D.alts.find(a=>String(o).toUpperCase().replace(/\s/g,'')===a.no||(()=>{const m=tminG(String(o));return m!=null&&Math.abs(m-(a.dep%1440))<=5})()):null;
+ if(I.askName)R('ANSWER','name');if(I.askRef)R('ANSWER','ref');if(I.askFlight)R('ANSWER','flight');if(I.askRoute)R('ANSWER','route');if(I.askDate&&!I.askFlight)R('ANSWER','date');if(I.askConcern)R('ANSWER','concern');if(I.askBag)R('ANSWER','bag');
+ I.wrongs.forEach(w=>R('CORRECT_AGENT',w.k));
+ const ac=alt(j.accepts_option),rj=alt(j.rejects_option),rjs=String(j.rejects_option||'');
+ if(ac)R('ACCEPT','option',{a:ac});else if(rc==='ACCEPT'&&I.rebooked)R('ACCEPT','rebooked');
+ if(rj||/tomorrow/i.test(rjs)||((rc==='REJECT'||rc==='PUSH_BACK')&&(I.offers.length||I.genTomorrow)))R('PUSH_BACK',(rj&&rj.dep<1440)||(!rj&&!/tomorrow/i.test(rjs)&&!I.genTomorrow)?'unsuitable':'tomorrow',{a:rj||I.offers[0]||null});
+ const key={fee:'cost',baggage:'bag',documents:'docs',original_ticket:'ticket'}[String(j.asks_about||'').toLowerCase()],nd=key&&st.needs.find(n=>n.k===key);if(nd&&!nd.done)R('ASK_FOLLOW_UP','need',{n:nd});
+ if(rc==='CLARIFY')R('CLARIFY',I.jargon?'jargon':'unclear',{w:I.jargon});if(rc==='EXPRESS_CONCERN'||(I.cause&&!st.causeKnown&&!rx.length))R('EXPRESS_CONCERN',D.cause==='tech'?'cause_tech':'cause_weather');if(rc==='REQUEST_REASSURANCE')R('REQUEST_REASSURANCE','guarantee');
+ if(rc==='THANK')R('THANK','empathy');if(rc==='WAIT')R('WAIT','check');
+ if(((j.wants_to_end_call||rc==='CLOSE')||/\b(goodbye|bye)\b/i.test(say))&&(I.close||I.askElse)&&!unresolvedD())R('CLOSE','final');
+ if(/\b(supervisor|manager)\b/i.test(say))R('ESCALATE','level');
+ if(!rx.length)R(wc(say)>=5?'CLARIFY':'ACK',wc(say)>=5?'unclear':'short');return rx}
+function finishAI(I,a){const D=S.D,st=D.st,rx=rxFromJson(a.j,I,a.say);
+ if(rx.some(r=>r.type==='PUSH_BACK'&&['tomorrow','unsuitable'].includes(r.target))){st.pushLvl++;emo('bad',"The representative keeps offering options that ignore the passenger's need.")}
+ if(rx.some(r=>r.type==='ACCEPT')){emo('good','The representative offered something that meets the passenger\'s need.');trustMv(5);st.fail=Math.max(0,st.fail-2);st.esc=Math.max(0,st.esc-1)}
+ if(rx.some(r=>r.type==='CLOSE')){emo('done','The issue was resolved.');st.esc=0}
+ if(/\b(supervisor|manager)\b/i.test(a.say)){S.managerAsked=true;st.mgrAsked=(st.mgrAsked||0)+1;st.esc=Math.max(st.esc,3)}
+ I.react=reactionOf(rx);return updateD({I,rx,base:a.say},a.say)}
+async function genD(I){const D=S.D;let out=null,why=[];const t0=Date.now();
+ for(let k=0;k<2&&!out;k++){try{const pr=promptD(I)+(k?`\n\nCORRECTION: your previous answer was rejected because ${why.join('; ')}. Write a new answer that fixes this, using only what you know.`:''),a=await withTimeout(askAI(D.sm,pr),22000);D.fails=0;
+   if(!a.say){why=['it was empty'];continue}why=whyD(a.say,a.j,I);if(!why.length){out=a;break}}
+  catch(e){D.fails=(D.fails||0)+1;if(e&&e.status===429)D.coolUntil=Date.now()+60000;if(D.fails>=3)D.aiOff=true;break}
+  if(Date.now()-t0>14000)break}
+ if(!out){D.src='local';badge();D.lastWhy=why;return finishD(planD2(I),null)}
+ D.src='ai';badge();return finishAI(I,out)}
+/* ---------- booking / policy scenarios ---------- */
+function promptG(agentText,st){const P=st.prof||{},K=st.K||{},age=+P.age,minor=age>0&&age<18,oc=AP[st.o]?AP[st.o][0]:st.o,dc=AP[st.d]?AP[st.d][0]:st.d,pol=K.kind==='policy',an0=an(agentText),x=agentText.toLowerCase();
+ const who=minor?`a ${age}-year-old ${age<15?'child':'teenager'} (a MINOR). Talk like a real ${age<15?'kid':'teen'}: casual, simple words, no airline jargon; you know nothing about airline rules for minors`:'an adult passenger',
+  an1=st.anger||0,mood=an1>=4?'furious':an1>=3?'very upset':an1>=2?'annoyed':an1>=1?'a little tense':'calm',recent=(st.t||[]).filter(z=>z.r!=='S').slice(-16,-1).map(z=>(z.r==='C'?'YOU: ':'REP: ')+z.text).join('\n')||'(this is the first thing the rep has said)';
+ const prof=[`Name: ${P.name}${minor?`, age ${age}`:''}`,`Trip: from ${oc} to ${dc}, travel date ${P.date}${P.pax?`, ${P.pax} passenger(s)`:''}${P.cabin?`, ${P.cabin} cabin`:''}${P.bags?`, ${P.bags} checked bag(s)`:''}${P.seat?`, you prefer a ${P.seat} seat`:''}`,pol?'':(P.nonstop?'You prefer a nonstop flight.':"You don't mind a connection."),(!pol&&P.reqText&&K.kind==='flight')?`Hidden requirement (a personal need — reveal it only when asked about timing/reason, or when an option does not fit): ${P.reqText}`:'',(st.sit!=='booking'&&!(st.sit||'').startsWith('minor')&&P.ref)?`Booking reference: ${P.ref}.`:''].filter(Boolean);
+ const topics=(K.topics||[]).map(t=>{let a='';try{a=t.ans(P)}catch(e){}return`- If asked about ${t.k}: ${a}${t.hid?' (this is a key personal fact — reveal it when asked)':''}`});
+ const notes=[];const T=an0.topics||[],M={origin:`You are flying from ${oc}.`,dest:`You are flying to ${dc}.`,date:`Travel date: ${P.date}.`,pax:`Passengers: ${P.pax||1}.`,cabin:`Cabin preference: ${P.cabin}.`,bags:`${P.bags||1} checked bag(s).`,seat:`Seat preference: ${P.seat}.`,nonstop:P.nonstop?'You want a nonstop flight.':"You don't mind connections.",time:(P.reqText?P.reqText:'You have no special time restriction.'),flex:'You are flexible only if the option really suits you.',age:`You are ${P.age||'an adult'}.`,name:`Your name is ${P.name}.`,bkref:P.ref&&st.sit!=='booking'&&!(st.sit||'').startsWith('minor')?`Your booking reference is ${P.ref}.`:'You have no booking yet — this is a new request.'};
+ T.forEach(k=>{if(M[k])notes.push(`The rep asked about ${k} → ${M[k]}`)});
+ if(/(how old|your age|date of birth|birth ?date|born|\bage\b)/.test(x)&&/\?|please|may i|could you/.test(x)&&P.age)notes.push(`The rep asked your age → you are ${P.age}.`);
+ (K.topics||[]).forEach(t=>{if(t.rx.test(x)&&/\?|may i|could you|can you|what|which|when|how/.test(x)){let a='';try{a=t.ans(P)}catch(e){}notes.push(`The rep asked about ${t.k} → ${a}`)}});
+ const codes=(agentText.match(/\b(PA|SK|MA|TO)\s?\d{3}\b/gi)||[]).map(z=>z.replace(/\s/g,'').toUpperCase()),times=[...x.matchAll(/\b(\d{1,2})(?::(\d{2}))?\s?(a\.?m\.?|p\.?m\.?)/g)].map(m=>{let h=+m[1]%12;if(/p/.test(m[3]))h+=12;return h*60+(+m[2]||0)}),amt=(x.match(/(?:\$|php|₱)\s?(\d[\d,]*)|(\d[\d,]*)\s?(?:pesos|dollars)/)||[]).slice(1,3).filter(Boolean).map(v=>+v.replace(/,/g,''))[0];
+ (st.flights||[]).filter(f=>codes.includes(f.no)||times.some(t=>Math.abs(t-(f.dep%1440))<=5)).forEach(f=>{const arr=times.some(t=>Math.abs(t-(((f.arrAbs%1440)+1440)%1440))<=5);let fit='';if(K.kind==='flight'&&st.ok){fit=arr||(S.mem&&S.mem.told&&S.mem.told.arrival)?(st.ok(f)?'it meets your requirement':'it does NOT meet your requirement'):'you cannot tell yet if it fits — you do not know the arrival time unless the rep says it; ask if it matters'}
+  notes.push(`Option mentioned: ${f.no} departing ${fmt(f.dep)}${f.stops?', with a stop':', nonstop'}. ${fit?'Your own check: '+fit+'.':''}${amt!=null?` The rep quoted $${amt}; from your own online search you remember roughly $${f.price} per person for this flight, so react if the rep's number is very different.`:''}`)});
+ return`You are playing ONE airline customer on a live phone call with a customer-service trainee. YOU decide what the customer says next. You are ${who}. You are the customer — never airline staff, an assistant, a narrator or a grader.
+=== WHO YOU ARE ===
+CUSTOMER TYPE: ${POL_TYPE[st.type]||POL_TYPE[3]}
+CURRENT MOOD: ${mood}. SITUATION: ${K.label||'general enquiry'}.
+${prof.join('\n')}
+${topics.length?'FACTS ABOUT YOUR SITUATION (state them only when relevant or asked):\n'+topics.join('\n'):''}
+=== KNOWLEDGE LIMITS ===
+You know only: the facts above, your own preferences and needs, ordinary common sense${minor?' for your age':''}, and what the rep has told you in this call. You do NOT know: flight inventory, fares, schedules, fees, or this airline's rules, procedures and policies, unless the rep told you. Never state them yourself; you may ask. If you do not know something the rep asks, say so.
+=== MEMORY ===
+${typeof memSummary==='function'?memSummary():''}
+=== THE CALL SO FAR ===
+${recent}
+=== THE REP JUST SAID — respond to THIS ===
+${agentText}
+=== FACT NOTES (from your own records; treat as true) ===
+${notes.map(z=>'- '+z).join('\n')||'- (nothing special: react naturally to what the rep said)'}
+=== HOW TO DECIDE ===
+Answer what was asked using only the facts above; otherwise react honestly to what the rep said — accept, push back, ask for clarification or express a concern, as someone with your type, mood${minor?' and age':''} would. Do not agree to everything; accept only what truly suits your situation. Never ask for something you already know or were already told. Do not end the call. 1-2 short spoken sentences, at most one question, no stage directions, never mention being an AI.
+${JSONFMT}`}
+function whyG(resp,j,st,agentText){const P=st.prof||{},K=st.K||{},w=[],an0=an(agentText),T=an0.topics||[],x=agentText.toLowerCase();if(!resp)return['it was empty'];if(wc(resp)>45||resp.length>380)w.push('it was too long for a phone reply (1-2 short sentences)');
+ const lk=leakWhy(resp);if(lk)w.push(lk);const tk=tokWhy(resp,agentTxt()+' '+(P.reqText||'')+' '+(P.ref||'')+' '+(P.name||'')+' '+(K.topics||[]).map(t=>{try{return t.ans(P)}catch(e){return''}}).join(' '));if(tk)w.push(tk);
+ if(/\b(goodbye|bye)\b/i.test(resp)||(j&&j.wants_to_end_call))w.push('you ended the call but the rep has not finished helping you');
+ if(qn(resp)>1)w.push('you asked more than one question');
+ const age=+P.age;if(age){const m=resp.match(/\b(\d{1,2})\s*(years?\s*old|yrs?\s*old|y\/o)\b/i);if(m&&+m[1]!==age)w.push(`you gave the wrong age; you are ${age}`);if(/(how old|your age|date of birth|birth ?date|born|\bage\b)/.test(x)&&/\?|please|may i|could you/.test(x)&&!new RegExp('\\b'+age+'\\b').test(resp))w.push(`the rep asked your age and you did not say ${age}`)}
+ if(T.includes('name')&&P.name&&!resp.includes(P.name.split(' ')[0]))w.push('the rep asked your name and you did not give it');
+ if(T.includes('bkref')&&P.ref&&st.sit!=='booking'&&!(st.sit||'').startsWith('minor')&&!resp.includes(P.ref))w.push(`the rep asked your booking reference and you did not say ${P.ref}`);
+ const rp=repWhy(resp,(st.t||[]).filter(z=>z.r==='C').map(z=>z.text));if(rp)w.push(rp);return[...new Set(w)]}
+async function genG(reply,agentText,st){st._gen=false;let why=[];const t0=Date.now();
+ for(let k=0;k<2;k++){try{const pr=promptG(agentText,st)+(k?`\n\nCORRECTION: your previous answer was rejected because ${why.join('; ')}. Write a new answer that fixes this, using only what you know.`:''),a=await withTimeout(askAI(geminiSm,pr),22000);
+   if(!a.say){why=['it was empty'];continue}why=whyG(a.say,a.j,st,agentText);if(!why.length){st.polFail=0;st._gen=true;if(!st.polNote){st.polNote=1;try{addMsg('S','<i>Live AI customer (Gemini) is deciding what this customer says, within the customer\'s profile</i>')}catch(e){}}return a.say}}
+  catch(e){st.polFail=(st.polFail||0)+1;if(e&&e.status===429)st.polCool=Date.now()+60000;if(st.polFail>=3)st.polOff=true;return reply}
+  if(Date.now()-t0>14000)break}
+ return reply}
+
+Brain.polish=polishG;
 /* ===== v9 SIMSIMI voice (optional): SimSimi answers the low-stakes turns, behind the customer type ===== */
 const SIM={ok:false,on:false,used:0,tried:0};
 const SIM_BAD=/\b(fuck\w*|shit\w*|bitch\w*|dick|pussy|sex\w*|porn\w*|nigg\w*|asshole|bastard|slut|whore|cunt|kill\w*|suicide|die|dead|stupid|idiot|dumb|ugly|fat|hate|love|boyfriend|girlfriend|kiss\w*|simsimi|sim|teach|damn|crap|drunk|drug\w*|gay|naked)\b/i;
@@ -1053,7 +1235,7 @@ function memRefine(res){try{const M=S.mem;if(!M||!res||S.ended||S.ending)return 
  memSent(r).forEach(s=>{const tk=memTok(s);if(tk.size>=3)M.said.push({tk,turn:T})});M.recent.push(r);if(M.recent.length>8)M.recent.shift();return r||res}catch(e){return res}}
 function memSummary(){const M=S.mem;if(!M)return'';const d=Object.entries(M.told).map(([k,v])=>k+(v.none?' (no extra charge)':v.amt?' ('+v.amt+')':v.c?' ('+v.c+')':v.f?' ('+v.f+')':''));
  return`ALREADY TOLD TO YOU BY THE REP (never ask about these again; refer back to them naturally if needed): ${d.join(', ')||'nothing yet'}. THINGS YOU ALREADY SAID (do not repeat them word for word): ${M.recent.slice(-3).join(' | ')||'nothing yet'}.`}
-(()=>{const o=Brain.reply;Brain.reply=async t=>{memNote(t);const r=await o(t);return typeof r==='string'?memRefine(r):r}})();
+(()=>{const o=Brain.reply;Brain.reply=async t=>{const c=String(t||'').replace(/\[[^\]]*\]/g,' ').replace(/\s{2,}/g,' ').replace(/\s+([.,?!])/g,'$1').trim();if(c&&c!==String(t||'').trim())t=c;memNote(t);const r=await o(t);return typeof r==='string'?memRefine(r):r}})();
 /* ===== v7 12-SKILL FOCUS grading level (100 pts) — applies to EVERY scenario ===== */
 const SK12=[['Greeting & Professionalism',8],['Communication Skills',8],['Active Listening',8],['Probing / Questioning',8],['Empathy',8],['Customer Handling',8],['De-escalation',8],['Problem Solving',10],['Accuracy',10],['Call Control',8],['Proper Escalation',8],['Closing',8]];
 function score12(){const D=S.D,L=D.L,M=D.M||{q:{}},s=S.stats||{},b=x=>x?1:0,acc=S.t.some(x=>x.r==='A'),ag=S.t.filter(x=>x.r==='A').length,
@@ -1175,9 +1357,9 @@ $('#b_recw').onclick=async()=>{if(R.mr&&R.mr.state==='recording'){R.mr.stop();re
 /* ===== v6 live AI customer (free-tier Gemini via Netlify Function) with automatic local fallback ===== */
 const LIVE={ok:false};
 async function geminiInit(D){try{const r=await withTimeout(fetch('/.netlify/functions/customer-response',{cache:'no-store'}),8000),j=await r.json();if(r.ok&&j.configured){D.sm=geminiSm;D.ai=true;D.live='gemini'}}catch(e){}try{badge()}catch(e){}}
-async function geminiSm(prompt){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),12000);try{const r=await fetch('/.netlify/functions/customer-response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt}),signal:ctl.signal}),j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||'http');e.status=r.status;throw e}if(!j.text)throw new Error('empty');return{text:j.text}}finally{clearTimeout(to)}}
+async function geminiSm(prompt,opts){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),12000);try{const r=await fetch('/.netlify/functions/customer-response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,json:!!(opts&&opts.json)}),signal:ctl.signal}),j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||'http');e.status=r.status;throw e}if(!j.text)throw new Error('empty');return{text:j.text,json:j.json||null}}finally{clearTimeout(to)}}
 function badge(){try{if(!S||!S.dis)return;const D=S.D,live=!!(D.ai&&D.sm&&!D.aiOff&&D.src!=='local'&&(D.src==='ai'||D.live||!D.wantLive));const c=$('#v_cust');
- c.textContent=live?'LIVE AI CUSTOMER':D.wantLive&&D.aiOff?'LOCAL FALLBACK CUSTOMER · live AI paused':D.wantLive&&!D.ai&&D.src==null?'LOCAL FALLBACK CUSTOMER · live AI unavailable':'LOCAL FALLBACK CUSTOMER';c.style.background=live?'#1f9d55':'#b8860b';
+ c.textContent=live?'LIVE AI CUSTOMER'+(aiDecides()?' · Gemini decides':' · wording only'):D.wantLive&&D.aiOff?'LOCAL FALLBACK CUSTOMER · live AI paused':D.wantLive&&!D.ai&&D.src==null?'LOCAL FALLBACK CUSTOMER · live AI unavailable':'LOCAL FALLBACK CUSTOMER';c.style.background=live?'#1f9d55':'#b8860b';
  $('#v_txt').style.display=(S.mode==='text'||S.noMic||!sttAvail())?'':'none';$('#b_retry_ai').style.display=(D.wantLive&&D.ai&&D.aiOff)?'':'none'}catch(e){}}
 async function liveProbe(){const o=$('#o_live');let ok=false,why='not configured',info=null;if(location.protocol==='file:')why='needs the deployed site';else try{const r=await fetch('/.netlify/functions/customer-response',{cache:'no-store'});if(r.ok){info=await r.json();ok=!!info.configured}}catch(e){why='unreachable'}
  LIVE.ok=ok;LIVE.info=info;LIVE.why=ok?'':why;LIVE.name=info&&info.active==='microsoft'?'Microsoft':'Gemini';o.disabled=!ok;o.textContent=ok?(info.active==='microsoft'?'Live AI customer (Microsoft Azure OpenAI)':'Live AI customer (Gemini free tier)'):'Live AI customer ('+why+')';try{renderStatus();$('#s_cust').onchange&&$('#s_cust').onchange()}catch(e){}}
