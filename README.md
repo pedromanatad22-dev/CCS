@@ -101,3 +101,21 @@ With **Passenger engine = Live AI customer**, the setting **Live AI style** cont
 The function now also supports a JSON mode (`{ "prompt": "...", "json": true }`) used by this feature. Text mode is unchanged.
 
 *Note:* your `Test_5` page also has an optional SimSimi voice that calls `/.netlify/functions/simsimi`. That function is not part of this package, so the option simply shows as unavailable unless you add your own.
+
+## 10. Free backup AI — what about ChatGPT and Copilot?
+
+**There is no free ChatGPT or Microsoft Copilot API.** Both are consumer apps (and scraping them is not allowed). OpenAI's API and Microsoft's Azure OpenAI are billed services.
+Instead, the live AI customer can fall back to two **free-tier** providers that use the same standard API:
+
+| Provider | Free key | Notes |
+|---|---|---|
+| **Groq** | https://console.groq.com/keys (no card) | Fast open models (Llama). Free-tier limits vary by model and change. |
+| **OpenRouter** | https://openrouter.ai/keys (no card) | Many ":free" models behind one key. Free usage is tightly limited per day. Keep a ":free" model name so nothing is billed. |
+
+**How it works:** add `GROQ_API_KEY` and/or `OPENROUTER_API_KEY` in Netlify and redeploy. The function tries your first choice (`AI_PROVIDER`, default Gemini), then the backups in `AI_FALLBACKS` (default `groq,openrouter`). It moves to the next provider on a rate limit, outage, timeout or unreadable answer, and if every provider fails the app uses its built-in local customer. With only a Groq key (no Gemini key) Groq simply becomes the main provider. The start-screen status card shows which are connected.
+
+**Things to know**
+* Free tiers change often, so check each provider's current limits and data terms. Free-tier providers may use prompts to improve their products, so keep using fictional details only.
+* Smaller free models follow instructions less reliably than Gemini. That is why every reply is still fact-checked and the local customer remains the last fallback.
+* Model names get renamed or retired. If a backup stops working, set `GROQ_MODEL` / `OPENROUTER_MODEL` to a current free model.
+* Microsoft stays off unless you set `MICROSOFT_AI_ENABLED=true` (use `AI_PROVIDER=auto` to include it last).
