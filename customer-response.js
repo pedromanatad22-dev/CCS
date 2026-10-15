@@ -75,7 +75,11 @@ function status() {
     mode: c.length ? 'ai-enabled' : 'browser-only',
     requested: (env('AI_PROVIDER') || 'gemini').toLowerCase(),
     providers,
-    fallback: 'local'
+    fallback: 'local',
+    // Diagnostics (booleans only - never names or values of your variables):
+    version: 'groq-openrouter-v2',
+    envSeen: { GEMINI_API_KEY: !!env('GEMINI_API_KEY'), GROQ_API_KEY: !!env('GROQ_API_KEY'), OPENROUTER_API_KEY: !!env('OPENROUTER_API_KEY') },
+    misplacedKey: Object.keys(process.env).some(k => /^(gsk_|sk-or-|AIza)/i.test(k)) // a key was pasted into the variable NAME field
   };
 }
 

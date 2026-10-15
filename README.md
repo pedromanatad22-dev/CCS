@@ -119,3 +119,12 @@ Instead, the live AI customer can fall back to two **free-tier** providers that 
 * Smaller free models follow instructions less reliably than Gemini. That is why every reply is still fact-checked and the local customer remains the last fallback.
 * Model names get renamed or retired. If a backup stops working, set `GROQ_MODEL` / `OPENROUTER_MODEL` to a current free model.
 * Microsoft stays off unless you set `MICROSOFT_AI_ENABLED=true` (use `AI_PROVIDER=auto` to include it last).
+
+## 11. Training Mode (live coaching while you practice)
+
+* **Turn it on:** on the home dashboard, switch **Training Mode** to ON before you start a call. The setting is remembered. It is **not available in Assessment mode** (assessments give no hints). The older "Training mode" dropdown was renamed **Practice or assessment** to avoid confusion.
+* **What you see:** during a call, a **Training Assistant** panel appears on the right of the conversation (below it on small screens, collapsible). It shows **INFORMATION YOU SHOULD ASK** (the most important missing items for this scenario, with the next one highlighted), then **exactly two correct example replies**: A (empathetic and reassuring) and B (direct and efficient).
+* **Use Response A / B** puts the wording into the message box for you to edit, then Send or say it yourself. It never sends anything, and it will not replace speech your microphone is capturing. **Hear** reads the suggestion aloud.
+* **It updates every turn:** items disappear once you have asked for them or the customer has already told you. You can switch it off or on mid-call.
+* **Separate from grading:** training never changes the customer, the score or the report criteria. The report only adds a small note saying how often the guidance was shown or used ("not part of your score").
+* **How it works:** it uses a built-in, scenario-based guide for every scenario (booking, change, missed connection, refund, baggage, wheelchair, name correction, minors, and the cancellation scenarios). It does not use AI and does not invent policy, prices, flights or outcomes. Where the rep must read real data (flights, fares) the suggestion shows a placeholder such as [flights and fare from your search results]. The logic is in one place (`TRAIN_STEPS` and `trSuggest`) so an AI suggestion engine can replace it later.
