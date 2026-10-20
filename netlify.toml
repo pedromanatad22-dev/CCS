@@ -19,6 +19,13 @@
     Permissions-Policy = "microphone=(self), camera=(), geolocation=()"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
 
+# Friendly API path used by the app for the AI Training Assistant
+[[redirects]]
+  from = "/api/training-assistant"
+  to = "/.netlify/functions/training-assistant"
+  status = 200
+  force = true
+
 # Keep source/config files private (they hold no secrets, but there is no reason to publish them).
 [[redirects]]
   from = "/netlify/*"

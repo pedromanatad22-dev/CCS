@@ -1,15 +1,13 @@
-Upload these files to your GitHub repository (they replace the old ones with the same name):
+Upload these files to your GitHub repository (they replace/add to what is there):
 
-  index.html                                   -> main (root) folder of the repo
-  netlify/functions/customer-response.js       -> netlify/functions folder   (THIS is the file that adds Groq + OpenRouter)
-  netlify/functions/customer.js                -> netlify/functions folder
-  netlify/functions/transcribe.js              -> netlify/functions folder
-  netlify/functions/lib/common.js              -> netlify/functions/lib folder
+  index.html                                     -> main (root) folder
+  netlify.toml                                   -> main (root) folder   (adds the /api/training-assistant route)
+  netlify/functions/training-assistant.js        -> netlify/functions folder   (NEW file: the Gemini coach)
+  README.md, .env.example                        -> main folder (optional, documentation)
 
-Then in Netlify -> Site configuration -> Environment variables add:
-  GROQ_API_KEY         (value = your gsk_... key)
-  OPENROUTER_API_KEY   (value = your sk-or-... key)   [optional]
-and run Deploys -> Trigger deploy -> Deploy site.
+Your existing GEMINI_API_KEY in Netlify is reused. Nothing else to configure.
+Optional Netlify variables: GEMINI_TRAINING_MODEL, TRAINING_FALLBACKS, TRAINING_AI=off.
 
-Check: open  https://YOUR-SITE.netlify.app/.netlify/functions/customer-response
-The text must contain "groq" and "openrouter". When a key is set you will see "configured":true next to it.
+After Netlify shows "Published":
+  1. Open https://YOUR-SITE.netlify.app/api/training-assistant  -> it must show "configured":true
+  2. Turn Training Mode ON, start a call, and watch the right panel: "Coached by Gemini".
