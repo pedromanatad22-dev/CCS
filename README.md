@@ -1,3 +1,5 @@
+> **Version 11.0 — Booking Verification Workspace.** This package is a drop-in replacement for the previous version: same file names and folders. See MERGE-INSTRUCTIONS.md and CHANGELOG.md.
+
 # Airline Call Simulator — Netlify deployment
 
 Your existing simulator, prepared for **Netlify Free**. Nothing was rebuilt: `index.html` is your file with a connection-status panel added and the AI/speech endpoints pointed at the new Netlify Functions. Grading, scenarios, reports, scripts, practice/assessment modes, trainer mode and the local customer are unchanged.
@@ -143,3 +145,34 @@ With **Training Mode ON** and **Training Assistant engine = Gemini coach**, the 
 **Setup** (same Gemini key as the live customer): nothing new is required if `GEMINI_API_KEY` is already set. The browser calls `/api/training-assistant` (a redirect to `/.netlify/functions/training-assistant`, defined in `netlify.toml`). Optional variables: `GEMINI_TRAINING_MODEL` (model for the coach; default `gemini-2.5-flash`), `TRAINING_FALLBACKS=groq,openrouter` (free backups, off by default) and `TRAINING_AI=off` (switch the AI coach off; built-in guidance remains). The key never reaches the browser. Upload the new `index.html`, `netlify.toml` and `netlify/functions/training-assistant.js`, then redeploy.
 
 **Limits:** the rubric descriptions the coach receives (`RUB7`, `RUB12` in `index.html`) mirror the grader's criteria and must be updated by hand if you change the grading. The coach helps you meet every criterion but cannot guarantee a perfect score. In Assessment mode the coach is disabled. Opening the file from disk shows only the built-in guidance.
+
+## 13. Booking Verification Workspace (v11.0)
+
+**What it is.** A workspace on the call screen where the trainee retrieves a booking, verifies the passenger and itinerary, reviews discrepancies, records a decision, and escalates with a form. All data is **simulated** and comes from the same scenario as the call (the same passenger name, booking reference, route, dates and flights the customer talks about).
+
+**Turn it on/off.** Dashboard card *Booking Verification Workspace* (default ON, remembered). OFF = calls behave exactly as in the previous version. During a call, press **📋 Booking Verification** to open or close the panel; the button shows how many checks have passed.
+
+**How a trainee uses it**
+1. Ask the customer verification questions in the conversation (name, booking reference, travel date...).
+2. **Search Booking** with what the customer gave (reference or surname). Results: one match is shown, several matches must be chosen, none shows **BOOKING NOT FOUND** (no booking is ever invented). New-booking and eligibility calls have no existing booking to retrieve.
+3. Record what the customer is asking for and, if relevant, when they must arrive.
+4. Press **Check** on each item (identity, name, route, date, booking/ticket/flight status), **Mark itinerary reviewed**, open and **Mark policy reviewed**. A check passes only with evidence (matching details plus verification questions actually asked in the call).
+5. Read **Discrepancies and alerts** (severity, expected, actual, evidence, next action).
+6. Use **Search Flights** and select a flight: it appears as the *proposed replacement* and is evaluated against the customer's requirement.
+7. Record a **decision** (VERIFIED — READY TO PROCEED, VERIFICATION INCOMPLETE, DISCREPANCY FOUND, BOOKING NOT FOUND, ESCALATION REQUIRED) with an explanation.
+8. **Confirm Booking** (existing button) now works only after a valid VERIFIED decision and a valid proposed flight. Booking confirmation and **Issue ticket (simulated)** are separate actions.
+9. **Escalate** (existing button) opens the escalation form (Draft → Submitted → Awaiting Supervisor → Resolved, all simulated). Submitting then runs the original escalation behaviour.
+
+**Rules enforced in JavaScript** (not just disabled buttons): a decision is validated against the real check statuses and discrepancies; VERIFIED needs every applicable check passed and no unresolved Critical discrepancy; a name or wrong-record mismatch is Critical; a cancelled flight needs an alternative that meets the requirement; sold-out, original or non-fitting flights cannot be confirmed; changed booking data reopens the affected checks and clears the decision.
+
+**Verification policy.** The scenario policy is shown to the trainee. The numeric thresholds (2 matched identifiers, 2 verification questions) are a clearly marked, configurable **training default** (`WS_POLICY` in `index.html`).
+
+**Connections.** Search Flights (selection feeds the proposal), Confirm Booking (gated), Escalate (form), the AI customer (its prompt now includes the same booked flight/date/route/name facts), the Training Assistant (it sees the workspace state) and the grading system (below).
+
+**Grading.** No weights, pass marks or formulas were replaced. With the workspace ON, the 7-criteria rubric's *Verify Flight/Travel Information* criterion gains one item (correct verification decision; its points are shared among 5 items instead of 4) and takes penalties for blocked confirm attempts, a wrong decision, a wrong record, or an unjustified escalation. The 12-skill grader adjusts *Accuracy* and *Proper Escalation* the same way. The report adds a "Booking verification record" card.
+
+**Saved records.** Each call's verification record is saved in this browser (localStorage, last 20) and can be downloaded as JSON. It is not synchronized across devices or users, and a call itself does not survive a page reload (the saved record does).
+
+**Trainer tools.** In Trainer role the panel can change the booking data (cancel the flight, unconfirm, ticket not issued, change date or surname, restore) to demonstrate that checks reopen.
+
+**Limits.** All records, flights and tickets are fictional. Booking not found/multiple matches use scenario-based records (the customer's booking plus one similar-surname record). There is no supervisor notification system, so escalation is simulated. Part of the scenario (for example hidden customer facts) is intentionally not revealed by the workspace.
