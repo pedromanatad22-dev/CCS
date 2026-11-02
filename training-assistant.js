@@ -34,6 +34,7 @@ const SYSTEM = [
   '5. Do not ask for information the checklist marks Provided or Verified unless a genuine confirmation read-back is needed. Prioritise the most important Missing item.',
   '6. Never suggest collecting card CVV/security codes or other unnecessary sensitive data.',
   '7. Training only: do not assume the representative will use your suggestion; grading is based on what they actually say.',
+  '8. Fit the CUSTOMER\'S LATEST STATEMENT and the stage of the call: on the representative\'s first reply include a professional greeting; acknowledge the specific issue the customer described (not a generic apology); answer a direct question only with information in the context, otherwise say you will check; respond to an objection or a frustrated tone; read back details the customer just gave; never close the call while required items are still open. Each reply should demonstrate one rubric criterion from the context.',
   'OUTPUT: return ONLY one JSON object matching the schema. Provide EXACTLY two suggested replies: "recommendedResponse" is the best next reply for the rubric; "alternativeResponse" achieves the same objective with a different but appropriate style. They must not contradict each other, must be natural to say on a phone call (at most about 45 words each), must respond to the customer\'s latest message, and must include the single most important next action or question. Use [brackets] as placeholders when the representative must read real data from their screen.'
 ].join('\n');
 
