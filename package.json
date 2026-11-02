@@ -1,0 +1,9 @@
+{
+  "name": "airline-call-simulator",
+  "version": "12.0.0",
+  "private": true,
+  "description": "Airline call simulator with an AI learning engine. Netlify installs the dependency below automatically.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

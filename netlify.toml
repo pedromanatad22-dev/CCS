@@ -36,6 +36,16 @@
   status = 200
   force = true
 
+# Learning engine API (Netlify Blobs storage, background analysis, scheduled retries)
+[[redirects]]
+  from = "/api/learning/*"
+  to = "/.netlify/functions/learning/:splat"
+  status = 200
+  force = true
+
+[functions."learning-retry"]
+  schedule = "*/15 * * * *"
+
 # Keep source/config files private (they hold no secrets, but there is no reason to publish them).
 [[redirects]]
   from = "/netlify/*"
@@ -54,6 +64,11 @@
   force = true
 [[redirects]]
   from = "/README.md"
+  to = "/404.html"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/package.json"
   to = "/404.html"
   status = 404
   force = true
