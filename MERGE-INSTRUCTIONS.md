@@ -2,10 +2,10 @@
 
 Every file in this package has the **same name and folder** as in the previous version, so merging simply overwrites the old files. Nothing is renamed or removed, and your Netlify settings and environment variables are not touched.
 
-## New in v12.0: one extra setting and a few new files
-1. In Netlify open **Site configuration → Environment variables** and add `LEARNING_ADMIN_KEY` (a long passphrase, at least 12 characters). This is the password for the Knowledge Center.
-2. Upload the new files below (all are in the zip) and let Netlify redeploy. `package.json` makes Netlify install the storage library automatically.
-3. Open `/knowledge-center.html`, enter the key, and check that *Storage* says **persistent**. Also `/api/learning/status` should show `"persistent":true`.
+## New in v12: a few new files (no password needed)
+1. Upload the new files below (all are in the zip) and let Netlify redeploy. `package.json` makes Netlify install the storage library automatically.
+2. Open `/knowledge-center.html`. It opens without a password. Check that *Storage* says **persistent**; `/api/learning/status` should show `"persistent":true`.
+3. Optional: to protect the page, add the Netlify variable `LEARNING_ADMIN_KEY` (at least 12 characters) and redeploy.
 
 ## Files in this package
 ```
@@ -35,7 +35,7 @@ README.md, CHANGELOG.md, MERGE-INSTRUCTIONS.md, .env.example
 5. Netlify redeploys automatically; wait for **Published** under Deploys.
 
 ## Option B — Git
-Copy the contents of the unzipped folder over your local clone, then `git add -A`, `git commit -m "v12.0 AI learning engine and Knowledge Center"`, `git push`.
+Copy the contents of the unzipped folder over your local clone, then `git add -A`, `git commit -m "v13.0 Training Mode phrases fixed after audit"`, `git push`.
 
 ## Option C — Pull request (to review first)
 Create a branch, add the files as above, open a pull request, and merge it into the production branch. Netlify publishes when the merge lands. The deploy preview shows the new version before you merge.
@@ -46,7 +46,7 @@ Create a branch, add the files as above, open a pull request, and merge it into 
 - Stray copies such as `Test_5_index.html` or older `*.html` files are not used by the site; you may delete them to avoid confusion, but it is not required.
 
 ## Check that the new version took over
-1. Press **Ctrl+Shift+R** on your site. The header shows the tag **v12.0** next to the title.
+1. Press **Ctrl+Shift+R** on your site. The header shows the tag **v13.0** next to the title.
 2. The start screen has a new card **Booking Verification Workspace**.
 3. Start a call: a **📋 Booking Verification** button appears.
 4. `https://YOUR-SITE.netlify.app/api/training-assistant` and `/.netlify/functions/customer-response` still show `"configured":true` for the services you had working.

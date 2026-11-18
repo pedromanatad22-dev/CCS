@@ -1,5 +1,29 @@
 # Changelog
 
+## 13.0 — Training Mode phrases fixed after the audit
+**Fixed**
+- "Okay"/"Sure, take your time" no longer triggers the vague "I'll note that and explain what happens next". Filler moves the call to the next required step. A suggestion is never shown three times in a row.
+- Concrete wording for options (real flights, times, fare), confirmation, documents, what to keep ready, read-back of the details the customer gave, and a closing that checks the concern was handled.
+- Suggestions now adapt to the customer's real personality, the difficulty, and the starting and current emotion. They previously did not change at all.
+- Direct questions, "explain that", update requests, "I already told you", long-wait complaints and objections get specific answers; objections in refund and minor calls get the real rule and the alternative.
+- Checklist steps are only marked done when the required statement was really made (previously "let me check" ended the policy step too early, so the eligibility decision for minors was never suggested).
+- Added checklist steps: name, what happened and what you need, flight/route/date, read-back, and documents for every scenario. Recognition of cancelled-flight, missing-bag and "update" messages.
+- Wording avoids the grader's known traps. Unknown cancellation cause no longer blocks the call.
+
+**Measured (simulated):** following suggestion A averaged 89 (was 48), best 100 (was 75), about 96% of calls reached the 70 pass mark (was 3%). The grading rubric and scoring code are unchanged.
+
+
+## 12.1 — Knowledge Center without a password, and a history of pasted knowledge
+**Changed**
+- The Knowledge Center no longer asks for a password. `LEARNING_ADMIN_KEY` is now optional: if it is set (12+ characters) the page asks for it, as before. With no key, changes are accepted only from this site's own pages (Origin check), which stops other websites but is not a substitute for a password. A too-short key is rejected with a clear message and never silently opens the page.
+- Pasted knowledge is now labelled **Pasted text** and conversation learning is labelled **From conversations**.
+
+**Added**
+- **Knowledge history** tab: every pasted text is kept in full (date, category, status, earlier wordings after edits). Remove it (stops being used, text kept), restore it, or erase it permanently. Library "Remove" keeps the paste in the history. Patterns learned from conversations can also be removed from use there.
+- Warning banner on the page when no password is set.
+
+**Unchanged:** automatic learning, validation, semantic customer, Booking Verification Workspace, Training Mode and the grading rubric.
+
 ## 12.0 — AI learning engine, semantic customer, Knowledge Center
 **Added**
 - `semantic.js`: shared recognizer that maps what the agent means to the field being asked for. Paraphrased verification questions answered correctly: rule-based customer 10/35 → 35/35; cancellation customer 4/24 → 24/24.
