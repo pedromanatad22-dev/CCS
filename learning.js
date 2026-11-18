@@ -6,7 +6,9 @@ const{json,sameOrigin,rateLimit,parseBody}=require('./lib/common');
 const ops=require('./lib/ops');const E=require('./lib/engine');
 const env=k=>String(process.env[k]||'').trim();
 const sha=s=>crypto.createHash('sha256').update(String(s)).digest();
-function adminState(event){const key=env('LEARNING_ADMIN_KEY');if(key.length<12)return'not_configured';const got=String((event.headers||{})['x-admin-key']||(event.headers||{})['X-Admin-Key']||'');return got&&crypto.timingSafeEqual(sha(got),sha(key))?'ok':'denied'}
+function adminState(event){const key=env('LEARNING_ADMIN_KEY');if(!key)return'open';if(key.length<12)return'weak';const got=String((event.headers||{})['x-admin-key']||(event.headers||{})['X-Admin-Key']||'');return got&&crypto.timingSafeEqual(sha(got),sha(key))?'ok':'denied'}
+/* With no password set, changes must come from this site's own pages: the browser must send a matching Origin header. This blocks other websites and casual scripts; it is NOT a substitute for a password. */
+function strictOrigin(event){const h=event.headers||{},o=h.origin||h.Origin;if(!o)return false;try{const host=new URL(o).host,mine=String(h['x-forwarded-host']||h['X-Forwarded-Host']||h.host||h.Host||'').split(',')[0].trim();return host===mine}catch(e){return false}}
 const jobToken=id=>crypto.createHmac('sha256',env('LEARNING_ADMIN_KEY')||'learning-default').update(id).digest('hex').slice(0,32);
 async function trigger(event,jobId){try{const h=event.headers||{},host=h.host||h.Host,proto=h['x-forwarded-proto']||'https';if(!host)return false;const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);const r=await fetch(proto+'://'+host+'/.netlify/functions/learning-analyze-background',{method:'POST',headers:{'Content-Type':'application/json','x-learn-job':jobToken(jobId)},body:JSON.stringify({jobId}),signal:ctl.signal});clearTimeout(t);return r.status>=200&&r.status<300}catch(e){return false}}
 const related=(kb)=>{const out=[];for(let i=0;i<kb.length;i++)for(let j=i+1;j<kb.length;j++){const a=new Set(kb[i].tokens||[]),b=new Set(kb[j].tokens||[]);const sc=E.Sem.dice(a,b);if(sc>=0.22)out.push({a:{id:kb[i].id,title:kb[i].title},b:{id:kb[j].id,title:kb[j].title},score:+sc.toFixed(2)})}return out.sort((x,y)=>y.score-x.score).slice(0,40)};
@@ -15,7 +17,7 @@ exports.handler=async(event)=>{const method=event.httpMethod,sub=((event.path||'
  const S=ops.stores(event);const PUBLIC=['status','session','patterns','retrieve'];
  if(PUBLIC.includes(route)){
   if(method==='POST'&&!sameOrigin(event))return json(403,{error:'forbidden_origin'});
-  if(route==='status'){const a=env('LEARNING_ADMIN_KEY').length>=12;if(!S)return json(200,{configured:false,persistent:false,adminConfigured:a,error:'storage_unavailable'});const st=await ops.settings(S);return json(200,{configured:true,persistent:S.persistent,collect:st.collect,adminConfigured:a})}
+  if(route==='status'){const a=env('LEARNING_ADMIN_KEY').length>=12,open=!env('LEARNING_ADMIN_KEY');if(!S)return json(200,{configured:false,persistent:false,adminConfigured:a,adminOpen:open,error:'storage_unavailable'});const st=await ops.settings(S);return json(200,{configured:true,persistent:S.persistent,collect:st.collect,adminConfigured:a,adminOpen:open})}
   if(!S)return json(503,{error:'storage_unavailable'});
   if(route==='patterns'){if(method!=='GET')return json(405,{error:'method_not_allowed'});const p=await S.meta.get('patterns')||{expr:{},terms:[],behaviours:[]};return json(200,p,{'Cache-Control':'public, max-age=60'})}
   if(!rateLimit(event,'learn-'+route,route==='retrieve'?120:30,60000))return json(429,{error:'rate_limited'});
@@ -26,7 +28,9 @@ exports.handler=async(event)=>{const method=event.httpMethod,sub=((event.path||'
   if(!r.duplicate){const ok=await trigger(event,r.jobId);if(!ok){try{await ops.processJob(S,r.jobId)}catch(e){}}}
   return json(202,{ok:true,sid:r.sid,duplicate:r.duplicate,persisted:S.persistent})}
  /* ----- admin ----- */
- const a=adminState(event);if(a==='not_configured')return json(503,{error:'admin_not_configured'});if(a!=='ok')return json(401,{error:'unauthorized'});if(!S)return json(503,{error:'storage_unavailable'});
+ const a=adminState(event);if(a==='weak')return json(503,{error:'admin_key_too_short'});if(a==='denied')return json(401,{error:'unauthorized'});
+ if(a==='open'&&method!=='GET'&&!strictOrigin(event))return json(403,{error:'forbidden_origin'});
+ if(!S)return json(503,{error:'storage_unavailable'});
  if(!rateLimit(event,'learn-admin',120,60000))return json(429,{error:'rate_limited'});
  let body={};if(method!=='GET'&&method!=='DELETE'){const p=parseBody(event,400000);if(p.error)return json(p.error,{error:'bad_request'});body=p.data||{}}
  const by='admin',id=seg[1],q=(event.queryStringParameters||{});
@@ -37,6 +41,7 @@ exports.handler=async(event)=>{const method=event.httpMethod,sub=((event.path||'
   if(method==='PUT'&&id)return json(200,await ops.kbUpdate(S,id,body,by));
   if(method==='DELETE'&&id)return json(200,await ops.kbDelete(S,id,by));
   if(method==='POST'&&id&&seg[2]==='rollback')return json(200,await ops.kbRollback(S,id,body.v,by))}
+ if(route==='pastes'){if(method==='GET'&&!id)return json(200,{items:await ops.pasteList(S)});if(method==='GET'&&id){const p=await S.pastes.get(id);return json(200,{paste:p})}if(method==='POST'&&id&&seg[2]==='remove')return json(200,await ops.pasteRemove(S,id,by));if(method==='POST'&&id&&seg[2]==='restore')return json(200,await ops.pasteRestore(S,id,by));if(method==='DELETE'&&id)return json(200,await ops.pasteErase(S,id,by))}
  if(route==='analyze-text'&&method==='POST')return json(200,{analysis:E.analyzeKnowledge(body.text,body.category||'general')});
  if(route==='records'){if(method==='GET'){let r=await ops.readAll(S.recs,'r_',4000);if(q.category)r=r.filter(x=>x.category===q.category);if(q.status)r=r.filter(x=>x.status===q.status);if(q.q){const s=q.q.toLowerCase();r=r.filter(x=>JSON.stringify([x.summary,x.data]).toLowerCase().includes(s))}r.sort((x,y)=>String(y.updated).localeCompare(x.updated));return json(200,{items:r.slice(0,300).map(x=>({...x,perSession:undefined})),total:r.length})}
   if(method==='POST'&&id==='merge')return json(200,await ops.recMerge(S,body.ids,by));if(method==='PUT'&&id)return json(200,await ops.recSet(S,id,body,by));if(method==='DELETE'&&id)return json(200,await ops.recDelete(S,id,by))}
